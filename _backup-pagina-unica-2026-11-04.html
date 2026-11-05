@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clínica Vida Diagnósticos — Exames laboratoriais e de imagem</title>
+<meta name="description" content="Clínica de exames laboratoriais e de imagem. Consulte serviços, valores e fale com a atendente pelo WhatsApp.">
+
+<!--
+===============================================================================
+ O QUE É ESTE ARQUIVO
+ Página de demonstração da clínica + widget de atendimento (o balão verde no
+ canto). Tudo que o widget precisa é o bloco <script id="cvd-widget">: o CSS
+ inteiro vive dentro de um Shadow DOM, então não briga com o CSS do seu site.
+
+ COMO PÔR NO SITE DA CLÍNICA
+ A) Copiar o widget (recomendado) — cole apenas o bloco de script marcado
+    pelos comentários de marcador (procure no arquivo por "INICIO DO WIDGET"
+    e "FIM DO WIDGET") antes do </body> do seu site. É um <script> só, sem
+    CSS externo, sem imagem, sem dependência. O style "cvd-base" e o conteúdo
+    header/main/footer são só o cenário de demonstração e não vão junto.
+
+ B) Iframe / modal — este mesmo arquivo com ?so=widget ou #widget na URL
+    esconde a página de demonstração e abre o atendimento direto:
+       clinica-atendimento-whatsapp.html#widget
+    Serve para abrir em modal, em nova aba ou num botão "Atendimento".
+
+ O QUE MUDAR ANTES DE PUBLICAR (bloco CONFIG, lá embaixo)
+   1. CONFIG.clinica.nome, atendente, endereco, horario
+   2. CONFIG.clinica.numeroWhatsApp -> formato 55XXXXXXXXXXX (atual: o seu)
+   3. CONFIG.categorias -> exames e PREÇOS (são valores de EXEMPLO)
+   4. CONFIG.duvidas -> perguntas e respostas do seu atendimento
+===============================================================================
+-->
+
+<style id="cvd-base">
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #12232b;
+    background: #f4f7f6;
+    line-height: 1.55;
+  }
+  img { max-width: 100%; }
+  a { color: #027a4a; }
+
+  .fa-hero {
+    background: linear-gradient(135deg, #0b5d46 0%, #12876a 55%, #17a67f 100%);
+    color: #fff;
+    padding: 72px 24px 88px;
+  }
+  .fa-container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  .fa-hero h1 { font-size: clamp(28px, 5vw, 46px); margin: 0 0 14px; line-height: 1.15; }
+  .fa-hero p { font-size: clamp(16px, 2.4vw, 20px); max-width: 620px; margin: 0 0 26px; opacity: .94; }
+  .fa-tag {
+    display: inline-block; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+    padding: 6px 14px; border-radius: 999px; font-size: 13px; letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .fa-botoes { display: flex; gap: 12px; flex-wrap: wrap; }
+  .fa-botoes a {
+    text-decoration: none; padding: 13px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+  }
+  .fa-botoes .primario { background: #fff; color: #0b5d46; }
+  .fa-botoes .secundario { border: 1.5px solid rgba(255,255,255,.75); color: #fff; }
+
+  .fa-bloco { padding: 56px 0; }
+  .fa-bloco h2 { font-size: clamp(22px, 3.6vw, 30px); margin: 0 0 8px; }
+  .fa-sub { color: #4a6270; margin: 0 0 30px; max-width: 640px; }
+  .fa-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .fa-card {
+    background: #fff; border: 1px solid #e2e9e7; border-radius: 14px; padding: 22px;
+    box-shadow: 0 1px 2px rgba(16,44,36,.05);
+  }
+  .fa-card .icone { font-size: 26px; }
+  .fa-card h3 { margin: 10px 0 6px; font-size: 17px; }
+  .fa-card p { margin: 0; font-size: 14.5px; color: #4a6270; }
+  .fa-card .preco { display: block; margin-top: 12px; font-weight: 700; color: #0b5d46; font-size: 15px; }
+
+  .fa-tabela { width: 100%; border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden;
+               border: 1px solid #e2e9e7; font-size: 15px; }
+  .fa-tabela th, .fa-tabela td { padding: 13px 16px; text-align: left; border-bottom: 1px solid #eef3f1; }
+  .fa-tabela th { background: #0b5d46; color: #fff; font-weight: 600; font-size: 13.5px; letter-spacing: .02em; }
+  .fa-tabela tr:last-child td { border-bottom: 0; }
+  .fa-tabela td.valor { white-space: nowrap; font-weight: 700; color: #0b5d46; }
+  .fa-scroll { overflow-x: auto; }
+
+  .fa-rodape { background: #0d2b24; color: #b9ccc6; padding: 34px 0; font-size: 14px; }
+  .fa-rodape strong { color: #fff; }
+  .aviso-demo {
+    background: #fff8e6; border: 1px solid #f0dca6; color: #6b5320;
+    padding: 12px 16px; border-radius: 10px; font-size: 13.5px; margin: 0 0 26px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================ SITE DA CLÍNICA (demonstração) ============================ -->
+<header class="fa-hero">
+  <div class="fa-container">
+    <span class="fa-tag">Exames laboratoriais e de imagem</span>
+    <h1>Resultados rápidos, preço justo e coleta sem fila.</h1>
+    <p>Hemograma, ultrassonografia, check-up completo e coleta domiciliar em Belo Horizonte.
+       Valores, prazos de laudo e agendamento no atendimento ao lado.</p>
+    <div class="fa-botoes">
+      <a class="primario" href="#" id="linkHero">Falar no WhatsApp</a>
+    </div>
+  </div>
+</header>
+
+<!--
+TRECHO OCULTADO EM 2026-11-04 A PEDIDO (bloco "Serviços e valores", aviso de
+protótipo, tabela de preços e rodapé). Para trazer de volta, apague esta linha
+de abertura, a linha de fechamento logo abaixo, e o "/" no fim de cada tag.
+-->
+<!--
+<main class="fa-bloco">
+  <div class="fa-container">
+    <div class="aviso-demo">
+      <strong>Protótipo.</strong> Os preços desta tabela são valores de exemplo e precisam ser
+      conferidos antes de publicar. Edite o bloco CONFIG no fim deste arquivo.
+    </div>
+
+    <h2>Serviços e valores</h2>
+    <p class="fa-sub">O atendimento no canto da tela simula o WhatsApp da clínica: ele pergunta o
+      seu nome, mostra as categorias de exames e os valores, responde dúvidas frequentes e, no fim,
+      transfere a conversa para a atendente real.</p>
+
+    <div class="fa-scroll">
+      <table class="fa-tabela" id="servicos">
+        <thead><tr><th>Exame / serviço</th><th>Prazo do resultado</th><th>Valor</th></tr></thead>
+        <tbody id="corpoTabela"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer class="fa-rodape">
+  <div class="fa-container">
+    <strong>Clínica Vida Diagnósticos</strong> — Rua Exemplo, 245, Savassi, Belo Horizonte/MG<br>
+    Segunda a sexta 6h–18h · Sábado 6h–12h · Coleta domiciliar disponível
+  </div>
+</footer>
+-->
+
+<!-- ============================ WIDGET DO ATENDIMENTO ============================ -->
+<!-- INICIO DO WIDGET (a partir daqui pode copiar para o seu site) -->
+<!-- Todo o CSS do widget fica dentro do Shadow DOM: nada vaza para o site. -->
+<script id="cvd-widget">
+(function () {
+  'use strict';
+
+  /* ────────────────────────────────────────────────────────────────
+     CONFIG — troque tudo aqui, nenhuma outra linha precisa mudar
+     ──────────────────────────────────────────────────────────────── */
+  var CONFIG = {
+    clinica: {
+      nome: 'Clínica Vida Diagnósticos',
+      atendente: 'Marina',
+      numeroWhatsApp: '5531992154970',
+      endereco: 'Rua Exemplo, 245 - Savassi, Belo Horizonte/MG',
+      horario: 'Seg a Sex 6h às 18h · Sáb 6h às 12h',
+      prazoRespostaHumana: 'menos de 5 minutos em horário comercial'
+    },
+
+    categorias: [
+      {
+        id: 'sangue',
+        rotulo: 'Exames de sangue e laboratoriais',
+        icone: '🩸',
+        resumo: 'Coleta rápida, resultado em até 1 dia útil.',
+        itens: [
+          { nome: 'Hemograma completo', valor: 35, prazo: 'até 1 dia útil', obs: 'Sem jejum obrigatório. Mostra anemias, infecções e plaquetas.' },
+          { nome: 'Glicose de jejum', valor: 18, prazo: 'até 1 dia útil', obs: 'Jejum de 8 horas. Rastreio de diabetes.' },
+          { nome: 'Colesterol completo (lipidograma)', valor: 45, prazo: 'até 1 dia útil', obs: 'Jejum de 10 a 12 horas. Inclui HDL, LDL e triglicerídeos.' },
+          { nome: 'TSH e T4 livre (tireoide)', valor: 60, prazo: 'até 2 dias úteis', obs: 'Não precisa de jejum. Tome a medicação normalmente.' },
+          { nome: 'Vitamina D (25-hidroxivitamina)', valor: 75, prazo: 'até 2 dias úteis', obs: 'Jejum opcional.' },
+          { nome: 'PSA (próstata)', valor: 40, prazo: 'até 2 dias úteis', obs: 'Evite atividade física e exame de toque 48h antes.' },
+          { nome: 'Painel inflamatório (VHS + PCR)', valor: 50, prazo: 'até 1 dia útil', obs: 'Sem jejum obrigatório.' },
+          { nome: 'Painel de DSTs (HIV, sífilis, hepatite B e C)', valor: 130, prazo: '3 a 5 dias úteis', obs: 'Sigilo total. Pode ser feito sem pedido médico.' }
+        ]
+      },
+      {
+        id: 'imagem',
+        rotulo: 'Exames de imagem',
+        icone: '🩻',
+        resumo: 'Equipamentos digitais com laudo assinado por especialista.',
+        itens: [
+          { nome: 'Ultrassonografia abdominal total', valor: 180, prazo: 'laudo na hora', obs: 'Jejum de 6 horas e bexiga cheia.' },
+          { nome: 'Ultrassonografia obstétrica', valor: 150, prazo: 'laudo na hora', obs: 'Sem preparo especial a partir do 2º trimestre.' },
+          { nome: 'Mamografia digital (as duas mamas)', valor: 160, prazo: 'laudo em 2 dias úteis', obs: 'Não use creme nem desodorante no dia.' },
+          { nome: 'Raio-X (por região)', valor: 70, prazo: 'laudo em 2 dias úteis', obs: 'Sem preparo. Traga exames anteriores.' },
+          { nome: 'Eletrocardiograma', valor: 90, prazo: 'laudo na hora', obs: 'Evite creme no tórax. Duração de 10 minutos.' },
+          { nome: 'Ecocardiograma', valor: 280, prazo: 'laudo em 2 dias úteis', obs: 'Jejum não obrigatório. Leve exames anteriores.' },
+          { nome: 'Tomografia sem contraste', valor: 350, prazo: 'laudo em 2 dias úteis', obs: 'Conforme a região solicitada.' },
+          { nome: 'Ressonância magnética', valor: 520, prazo: 'laudo em 3 dias úteis', obs: 'Retirar objetos metálicos. Informamos o preparo na confirmação.' }
+        ]
+      },
+      {
+        id: 'checkup',
+        rotulo: 'Check-up e pacotes',
+        icone: '📋',
+        resumo: 'Conjuntos de exames com preço fechado.',
+        itens: [
+          { nome: 'Check-up Básico', valor: 220, prazo: 'até 2 dias úteis', obs: 'Hemograma, glicose, colesterol, urina e eletrocardiograma.' },
+          { nome: 'Check-up Completo', valor: 480, prazo: 'até 3 dias úteis', obs: 'Básico + tireoide, vitamina D, fígado, fezes e raio-X de tórax.' },
+          { nome: 'Check-up Feminino', valor: 560, prazo: 'até 3 dias úteis', obs: 'Completo + mamografia e ultrassom transvaginal.' },
+          { nome: 'Check-up Masculino', valor: 520, prazo: 'até 3 dias úteis', obs: 'Completo + PSA e ultrassom de próstata.' },
+          { nome: 'Check-up Executivo 50+', valor: 780, prazo: 'até 4 dias úteis', obs: 'Completo + ergométrica, ecocardiograma e vitamina D.' },
+          { nome: 'Pacote Emagrecimento', valor: 290, prazo: 'até 2 dias úteis', obs: 'Tireoide, glicose, insulina, colesterol, vitamina D e B12.' }
+        ]
+      },
+      {
+        id: 'coleta',
+        rotulo: 'Coleta domiciliar e outros serviços',
+        icone: '🏠',
+        resumo: 'A enfermeira vai até você no dia e horário escolhidos.',
+        itens: [
+          { nome: 'Coleta domiciliar (taxa por visita)', valor: 40, prazo: 'mesmo prazo do exame', obs: 'Grátis para compras acima de R$ 300 na área urbana.' },
+          { nome: 'Exame de urina (EAS + cultura)', valor: 55, prazo: 'EAS 1 dia · cultura 3 dias', obs: 'Coleta do jato matinal, pote fornecido na clínica.' },
+          { nome: 'Parasitológico de fezes', valor: 40, prazo: '2 a 3 dias úteis', obs: 'Pode ser em até 3 amostras.' },
+          { nome: 'Beta hCG (gravidez)', valor: 60, prazo: 'até 1 dia útil', obs: 'Sem jejum. Sai no mesmo dia na unidade.' },
+          { nome: 'Laudos e resultados por e-mail/WhatsApp', valor: 0, prazo: 'imediato após liberação', obs: 'Sem custo adicional.' },
+          { nome: 'Teste ergométrico (esteira)', valor: 220, prazo: 'laudo na hora', obs: 'Venha com roupa esportiva e tênis.' }
+        ]
+      }
+    ],
+
+    duvidas: [
+      {
+        pergunta: 'Preciso de jejum?',
+        resposta: 'Depende do exame. Glicose pede 8 horas, colesterol 10 a 12 horas, e a maioria dos outros não precisa de jejum.\nQuando você escolher o exame, eu confirmo o preparo exato na tela. 💉'
+      },
+      {
+        pergunta: 'Em quanto tempo sai o resultado?',
+        resposta: 'Hemograma, glicose e colesterol saem no dia seguinte (1 dia útil). Ultrassom e eletrocardiograma têm laudo na hora.\nCultura de urina e ressonância levam de 3 a 5 dias úteis. Enviamos tudo por WhatsApp ou e-mail sem custo. 📄'
+      },
+      {
+        pergunta: 'Vocês aceitam convênio?',
+        resposta: 'Sim: Unimed, SulAmérica, Bradesco Saúde, Cassi e Banco do Brasil.\nTambém trabalhamos particular com desconto no pagamento à vista e parcelamos check-up no cartão. A {atendente} confere a sua cobertura no WhatsApp. 🏥'
+      },
+      {
+        pergunta: 'Preciso de pedido médico?',
+        resposta: 'Para a maior parte dos exames, sim — pode ser foto do pedido impresso ou receita digital.\nCheck-up, painel de DSTs e beta hCG dispensam pedido. 📝'
+      },
+      {
+        pergunta: 'Como funciona o agendamento?',
+        resposta: 'Escolhemos dia e horário aqui no atendimento, você recebe a confirmação e a coleta leva de 5 a 15 minutos.\nNão precisa chegar com antecedência — basta mostrar o documento com foto na recepção. 🗓️'
+      },
+      {
+        pergunta: 'Onde vocês ficam e qual o horário?',
+        resposta: 'Clínica Vida Diagnósticos — Rua Exemplo, 245, Savassi, Belo Horizonte/MG.\nSegunda a sexta das 6h às 18h, sábado das 6h às 12h. Estacionamento conveniado ao lado da entrada. ⏰'
+      },
+      {
+        pergunta: 'Tem coleta em casa?',
+        resposta: 'Tem. A taxa é de R$ 40 por visita na área urbana, com coleta a partir das 7h.\nPara compras acima de R$ 300 a coleta domiciliar sai grátis. 🏠'
+      },
+      {
+        pergunta: 'Quais as formas de pagamento?',
+        resposta: 'Pix, dinheiro, débito e crédito em até 3x sem juros (check-up em até 6x).\nO pagamento é feito na coleta, depois de realizar o exame. 💳'
+      }
+    ],
+
+    textos: {
+      saudacao: 'Olá! 👋 Bem-vindo(a) ao atendimento digital da {clinica}.',
+      puxaConversa: 'Antes de mostrar os serviços e valores, como você se chama?'
+    }
+  };
+
+  /* ────────────────────────────────────────────────────────────────
+     MOTOR DO FLUXO (não é preciso mexer abaixo desta linha)
+     ──────────────────────────────────────────────────────────────── */
+
+  var estilo = "\
+@layer base { :host { all: initial; } }\
+*{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}\
+:host{position:fixed;right:22px;bottom:22px;z-index:2147483000;display:flex;flex-direction:column;align-items:flex-end;gap:14px;max-width:calc(100vw - 24px)}\
+\
+/* --- botão flutuante --- */\
+.abrir{width:62px;height:62px;border-radius:50%;border:0;background:#25D366;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.28);transition:transform .18s ease;position:relative;padding:0}\
+.abrir:hover{transform:scale(1.07)}\
+.abrir svg{width:33px;height:33px;fill:#fff}\
+.pulso{position:absolute;inset:0;border-radius:50%;background:#25D366;opacity:.45;animation:pulso 2.4s ease-out infinite;pointer-events:none;z-index:-1}\
+@keyframes pulso{0%{transform:scale(1);opacity:.5}70%{transform:scale(1.55);opacity:0}100%{transform:scale(1.55);opacity:0}}\
+.novo{position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;border-radius:10px;background:#f23f3f;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff}\
+.dica{background:#fff;color:#12232b;font-size:13px;font-weight:600;padding:9px 14px;border-radius:18px 18px 4px 18px;box-shadow:0 4px 14px rgba(0,0,0,.16);max-width:210px;cursor:pointer;animation:sobe .5s ease both}\
+.dica span{display:block;font-weight:400;font-size:12px;color:#5b7280;margin-top:2px}\
+@keyframes sobe{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}\
+\
+/* --- painel --- */\
+.painel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:400px;height:640px;max-height:calc(100dvh - 28px);max-width:calc(100vw - 20px);background:#efeae2;border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.34);display:none;flex-direction:column;overflow:hidden}\
+.painel.aberto{display:flex;animation:abre .22s ease-out}\
+@keyframes abre{from{opacity:0;transform:translate(-50%,-50%) scale(.94)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}\
+\
+.cabeca{background:#008069;color:#fff;padding:11px 14px;display:flex;align-items:center;gap:11px;flex:none}\
+.avatar{width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:21px;flex:none}\
+.quem{flex:1;min-width:0}\
+.quem b{display:block;font-size:15px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\
+.quem i{display:block;font-style:normal;font-size:12.5px;opacity:.86;margin-top:2px}\
+.botao-cab{background:transparent;border:0;color:#fff;cursor:pointer;padding:7px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}\
+.botao-cab:hover{background:rgba(255,255,255,.16)}\
+.botao-cab svg{width:18px;height:18px;fill:#fff}\
+\
+.faixa{background:#d8f0e6;color:#0b5d46;font-size:11.5px;line-height:1.4;padding:7px 14px;border-bottom:1px solid #bfe2d2;flex:none;display:flex;gap:7px;align-items:flex-start}\
+.faixa b{font-weight:700}\
+\
+.conversa{flex:1;overflow-y:auto;padding:14px 12px 6px;background:#efeae2;background-image:radial-gradient(rgba(0,0,0,.035) 1px,transparent 1px);background-size:22px 22px;-webkit-overflow-scrolling:touch}\
+.conversa::-webkit-scrollbar{width:6px}\
+.conversa::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:3px}\
+.data{display:flex;justify-content:center;margin:2px 0 12px}\
+.data span{background:#fff;color:#5b7280;font-size:11.5px;padding:5px 11px;border-radius:8px;box-shadow:0 1px 1px rgba(0,0,0,.08)}\
+.linha{display:flex;margin-bottom:9px;align-items:flex-end}\
+.linha.bot{justify-content:flex-start}\
+.linha.eu{justify-content:flex-end}\
+.bolha{max-width:79%;padding:7px 9px 6px 10px;border-radius:8px;font-size:14.3px;line-height:1.43;color:#111b21;position:relative;box-shadow:0 1px 1px rgba(0,0,0,.13);white-space:pre-wrap;word-break:break-word}\
+.bot .bolha{background:#fff;border-top-left-radius:0}\
+.bot .bolha::before{content:'';position:absolute;left:-7px;top:0;border:7px solid transparent;border-top-color:#fff;border-bottom:0;border-left:0}\
+.eu .bolha{background:#d9fdd3;border-top-right-radius:0}\
+.eu .bolha::before{content:'';position:absolute;right:-7px;top:0;border:7px solid transparent;border-top-color:#d9fdd3;border-bottom:0;border-left:0}\
+.rodape-bolha{display:flex;justify-content:flex-end;align-items:center;gap:3px;margin-top:2px;font-size:11px;color:#667781}\
+.selo{width:15px;height:15px;fill:#9ed1ff;opacity:0;transition:opacity .3s}\
+.selo.lido{opacity:1}\
+\
+.menu{display:flex;flex-wrap:wrap;gap:7px;margin:-1px 0 11px;padding-left:2px}\
+.opcao{background:#fff;border:1px solid #e0ded9;border-radius:18px;padding:8px 13px;font-size:13.4px;color:#00755f;cursor:pointer;font-weight:600;box-shadow:0 1px 1px rgba(0,0,0,.09);transition:background .15s;text-align:left;line-height:1.3;max-width:100%}\
+.opcao:hover{background:#e7f8f2}\
+.opcao.atendente{background:#25D366;border-color:#25D366;color:#fff}\
+.opcao.atendente:hover{background:#1fb457}\
+.opcao.menu-casa{background:#f2f5f4;border-color:#dfe4e2;color:#3f5a68}\
+\
+.cartao{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.16);margin-bottom:2px;max-width:92%}\
+.cartao-topo{padding:10px 12px;background:linear-gradient(135deg,#0b5d46,#12876a);color:#fff;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;gap:8px}\
+.cartao-topo small{font-weight:500;opacity:.85;font-size:11px}\
+.lista-itens{padding:4px 12px 8px}\
+.item-linha{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f1;cursor:pointer;border-radius:5px}\
+.item-linha:last-child{border-bottom:0}\
+.item-linha:hover{background:#f5f9f7}\
+.item-nome{font-size:13.6px;color:#111b21;font-weight:600;line-height:1.3}\
+.item-sub{font-size:11.5px;color:#667781;margin-top:2px;font-weight:400}\
+.item-preco{font-size:13.4px;font-weight:700;color:#0b5d46;white-space:nowrap}\
+.item-preco.gratis{color:#2a9d5c}\
+\
+.escrevendo{background:#fff;border-radius:8px;padding:11px 13px;display:inline-flex;gap:4px;box-shadow:0 1px 1px rgba(0,0,0,.13)}\
+.escrevendo b{width:7px;height:7px;border-radius:50%;background:#b7bfc4;display:block;animation:ponto 1.1s infinite}\
+.escrevendo b:nth-child(2){animation-delay:.18s}\
+.escrevendo b:nth-child(3){animation-delay:.36s}\
+@keyframes ponto{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}\
+\
+/* --- cartão final do WhatsApp real --- */\
+.transferir{background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 2px rgba(0,0,0,.16);max-width:94%}\
+.transf-topo{display:flex;gap:11px;align-items:center;margin-bottom:11px}\
+.transf-foto{width:44px;height:44px;border-radius:50%;background:#e7f2ee;display:flex;align-items:center;justify-content:center;font-size:21px;flex:none}\
+.transf-topo b{display:block;font-size:14.5px;color:#111b21}\
+.transf-topo span{display:block;font-size:12.3px;color:#2a9d5c;font-weight:600}\
+.resumo{background:#f6f8f7;border:1px solid #e6ebe8;border-radius:8px;padding:10px 11px;font-size:12.6px;color:#3f5a68;line-height:1.5;margin-bottom:11px}\
+.resumo b{color:#111b21}\
+.abrir-wa{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;background:#25D366;color:#fff;text-decoration:none;font-size:14.5px;font-weight:700;padding:13px 14px;border-radius:9px;border:0;cursor:pointer;box-shadow:0 2px 8px rgba(37,211,102,.4)}\
+.abrir-wa:hover{background:#1fb457}\
+.abrir-wa svg{width:20px;height:20px;fill:#fff}\
+.aviso{font-size:11.4px;color:#667781;text-align:center;margin-top:9px;line-height:1.45}\
+\
+/* --- rodapé de digitação --- */\
+.rodape{background:#f0f2f5;padding:8px 10px;display:flex;gap:8px;align-items:center;flex:none;border-top:1px solid #e2e6e9}\
+.campo{flex:1;background:#fff;border-radius:22px;padding:10px 14px;font-size:14.3px;border:0;outline:none;color:#111b21;min-width:0}\
+.campo::placeholder{color:#8696a0}\
+.enviar{width:42px;height:42px;border-radius:50%;background:#008069;border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:none}\
+.enviar:hover{background:#026a56}\
+.enviar svg{width:19px;height:19px;fill:#fff;transform:rotate(-12deg)}\
+\
+@media (max-width:600px){\
+  :host{right:0;bottom:0;align-items:flex-end}\
+  .painel{width:min(calc(100vw - 16px),420px);height:min(calc(100dvh - 16px),760px);border-radius:14px}\
+  .abrir{right:14px;bottom:14px;width:56px;height:56px}\
+  .dica{margin-right:8px}\
+  .bolha{max-width:86%}\
+}\
+";
+
+  var svgWhats = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16.004 3.2c-7.06 0-12.8 5.74-12.8 12.8 0 2.26.59 4.46 1.71 6.4L3.2 28.8l6.57-1.72a12.7 12.7 0 0 0 6.23 1.6h.01c7.06 0 12.8-5.74 12.8-12.8s-5.74-12.68-12.8-12.68zm0 23.2h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.9 1.02 1.04-3.8-.25-.4a10.55 10.55 0 0 1-1.62-5.71c0-5.86 4.77-10.63 10.64-10.63a10.6 10.6 0 0 1 10.62 10.64c0 5.86-4.77 10.59-10.73 10.59zm5.84-7.96c-.32-.16-1.9-.94-2.2-1.04-.29-.11-.5-.16-.72.16-.21.32-.82 1.04-1.01 1.26-.19.21-.37.24-.69.08-1.94-.97-3.22-1.74-4.5-3.94-.34-.59.34-.55.97-1.82.11-.21.05-.4-.03-.56-.08-.16-.72-1.74-.99-2.38-.26-.63-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.11 1.09-1.11 2.65s1.14 3.08 1.3 3.29c.16.21 2.25 3.44 5.45 4.83 3.2 1.39 3.2.92 3.78.86.58-.06 1.88-.77 2.14-1.51.26-.75.26-1.39.18-1.52-.08-.13-.29-.21-.61-.37z"/></svg>';
+  var svgCheck = '<svg viewBox="0 0 16 15" class="selo" aria-hidden="true"><path d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.484.419.335a.62.62 0 0 0 .9-.066l5.855-7.04a.37.37 0 0 0-.08-.516z"/><path d="M12.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L5.666 9.879a.32.32 0 0 1-.484.033l-1.78-1.61a.32.32 0 0 0-.483.03l-.484.58a.32.32 0 0 0 .025.46l2.617 2.37a.32.32 0 0 0 .45-.014l6.89-7.76a.37.37 0 0 0-.08-.52z"/></svg>';
+  var svgSend = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1.101 21.757L23.8 12.001 1.101 2.245l.011 7.912 13.623 1.844-13.623 1.844-.011 7.912z"/></svg>';
+  var svgMinim = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13H5v-2h14v2z"/></svg>';
+
+  var raiz = document.createElement('div');
+  raiz.className = 'cv';
+  raiz.id = 'cvd-atendimento';
+  document.body.appendChild(raiz);
+  var sh = raiz.attachShadow({ mode: 'open' });
+
+  sh.innerHTML =
+    '<style>' + estilo + '</style>' +
+    '<div class="painel" id="painel">' +
+      '<div class="cabeca">' +
+        '<div class="avatar">🧪</div>' +
+        '<div class="quem"><b id="tituloClinica"></b><i id="statusAtendente">online agora</i></div>' +
+        '<button class="botao-cab" id="reiniciar" title="Recomeçar a conversa"><svg viewBox="0 0 24 24"><path d="M17.65 6.35A7.96 7.96 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>' +
+        '<button class="botao-cab" id="fechar" title="Minimizar">' + svgMinim + '</button>' +
+      '</div>' +
+      '<div class="faixa"><span>🔒</span><span><b>Simulador de atendimento.</b> Nada é enviado enquanto você não tocar no botão verde do WhatsApp no fim da conversa.</span></div>' +
+      '<div class="conversa" id="conversa"></div>' +
+      '<div class="rodape">' +
+        '<input class="campo" id="campo" type="text" autocomplete="off" placeholder="Digite sua mensagem">' +
+        '<button class="enviar" id="enviar" title="Enviar">' + svgSend + '</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="dica" id="dica">Precisa de um exame?<span>Veja valores e agende em 1 minuto</span></div>' +
+    '<button class="abrir" id="abrir" aria-label="Abrir atendimento">' +
+      '<span class="pulso"></span>' + svgWhats + '<span class="novo" id="novo">1</span>' +
+    '</button>';
+
+  var $ = function (id) { return sh.getElementById(id); };
+  var painel = $('painel'), conversa = $('conversa'), campo = $('campo'),
+      abrir = $('abrir'), fechar = $('fechar'), dica = $('dica'), reiniciar = $('reiniciar'),
+      enviar = $('enviar'), novo = $('novo');
+
+  $('tituloClinica').textContent = CONFIG.clinica.nome;
+
+  var estado = {
+    nome: null,
+    etapa: 'saudacao',      // saudacao | esperando_nome | menu | categoria | item | duvida | atendente | final
+    categoriaAtual: null,
+    escolha: null,           // { nome, valor, categoria }
+    duvidas: [],             // perguntas já abertas
+    periodo: null
+  };
+
+  function horaAgora() {
+    var d = new Date();
+    var h = d.getHours(), m = d.getMinutes();
+    return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
+  }
+  function moeda(v) {
+    if (v === 0) return 'Grátis';
+    return 'R$ ' + String(v).replace('.', ',');
+  }
+  function preencher(txt) {
+    return txt.replace(/\{clinica\}/g, CONFIG.clinica.nome)
+              .replace(/\{nome\}/g, estado.nome || 'você')
+              .replace(/\{atendente\}/g, CONFIG.clinica.atendente);
+  }
+  function rolar() { conversa.scrollTop = conversa.scrollHeight; }
+
+  function seloHora(texto) {
+    var s = document.createElement('span');
+    s.className = 'rodape-bolha';
+    s.innerHTML = '<span>' + texto + '</span>';
+    return s;
+  }
+
+  /* Bolha simples. tipo = 'bot' | 'eu' */
+  function bolha(tipo, texto, opcional) {
+    var linha = document.createElement('div');
+    linha.className = 'linha ' + tipo;
+    var b = document.createElement('div');
+    b.className = 'bolha';
+    b.textContent = texto;
+    var rod = seloHora((opcional && opcional.hora) || horaAgora());
+    if (tipo === 'eu') {
+      var selo = document.createElement('span');
+      selo.innerHTML = svgCheck;
+      rod.appendChild(selo.firstElementChild);
+    }
+    b.appendChild(rod);
+    linha.appendChild(b);
+    conversa.appendChild(linha);
+    rolar();
+    return { linha: linha, corpo: b, selo: rod.querySelector('.selo') };
+  }
+
+  /* Container do bot que recebe blocos ricos (menu, cartão, lista) */
+  function blocoBot() {
+    var linha = document.createElement('div');
+    linha.className = 'linha bot';
+    var b = document.createElement('div');
+    b.className = 'bolha';
+    b.style.background = 'transparent';
+    b.style.boxShadow = 'none';
+    b.style.padding = '0';
+    b.style.maxWidth = '100%';
+    linha.appendChild(b);
+    conversa.appendChild(linha);
+    rolar();
+    return b;
+  }
+
+  function escrever(indicador) {
+    var b = blocoBot();
+    var bub = document.createElement('div');
+    bub.className = 'escrevendo';
+    bub.innerHTML = '<b></b><b></b><b></b>';
+    b.appendChild(bub);
+    rolar();
+    return new Promise(function (resolver) {
+      setTimeout(function () { bub.remove(); resolver(b); }, indicador || 750);
+    });
+  }
+
+  function fala(texto, atraso) {
+    return escrever(atraso || 700 + Math.min(texto.length * 4, 900)).then(function (b) {
+      var linha = document.createElement('div');
+      linha.className = 'bolha';
+      linha.style.maxWidth = '79%';
+      linha.textContent = texto;
+      linha.appendChild(seloHora(horaAgora()));
+      b.appendChild(linha);
+      rolar();
+      return linha;
+    });
+  }
+
+  function botoes(opcoes) {
+    var alvo = blocoBot();
+    var m = document.createElement('div');
+    m.className = 'menu';
+    opcoes.forEach(function (op) {
+      var btn = document.createElement('button');
+      btn.className = 'opcao' + (op.classe ? ' ' + op.classe : '');
+      btn.textContent = op.rotulo;
+      btn.onclick = function () {
+        m.remove();
+        if (op.mensagemEu !== false) bolha('eu', op.rotulo.replace(/^\p{So}\s?/u, '').replace(/^\p{So}\s?/u, ''));
+        op.acao();
+      };
+      m.appendChild(btn);
+    });
+    alvo.appendChild(m);
+    rolar();
+    return m;
+  }
+
+  /* Lista de itens com preço. Cada linha é clicável. */
+  function listaCartao(titulo, subtitulo, itens, aoClicar) {
+    var alvo = blocoBot();
+    var c = document.createElement('div');
+    c.className = 'cartao';
+    var topo = document.createElement('div');
+    topo.className = 'cartao-topo';
+    topo.innerHTML = '<span>' + titulo + '</span>' + (subtitulo ? '<small>' + subtitulo + '</small>' : '');
+    c.appendChild(topo);
+    var corpo = document.createElement('div');
+    corpo.className = 'lista-itens';
+    itens.forEach(function (it) {
+      var l = document.createElement('div');
+      l.className = 'item-linha';
+      var esq = document.createElement('div');
+      esq.innerHTML = '<div class="item-nome"></div>' + (it.prazo ? '<div class="item-sub">' + it.prazo + '</div>' : '');
+      esq.querySelector('.item-nome').textContent = it.nome;
+      var preco = document.createElement('div');
+      preco.className = 'item-preco' + (it.valor === 0 ? ' gratis' : '');
+      preco.textContent = moeda(it.valor);
+      l.appendChild(esq); l.appendChild(preco);
+      l.onclick = function () {
+        corpo.remove(); topo.remove();
+        if (!alvo.childNodes.length) alvo.remove();
+        bolha('eu', it.nome + ' — ' + moeda(it.valor));
+        aoClicar(it);
+      };
+      corpo.appendChild(l);
+    });
+    c.appendChild(corpo);
+    alvo.appendChild(c);
+    rolar();
+    return c;
+  }
+
+  function dataSeparador(txt) {
+    var d = document.createElement('div');
+    d.className = 'data';
+    d.innerHTML = '<span>' + txt + '</span>';
+    conversa.appendChild(d);
+  }
+
+  /* ─────────────── LINK REAL DO WHATSAPP ─────────────── */
+  function mensagemResumo() {
+    var partes = ['Olá, ' + CONFIG.clinica.atendente + '! Vim pelo atendimento digital da ' + CONFIG.clinica.nome + '.'];
+    partes.push('Meu nome é ' + estado.nome + '.');
+    if (estado.escolha) {
+      partes.push('Tenho interesse no exame: ' + estado.escolha.nome + ' (' + moeda(estado.escolha.valor) + ')');
+      if (estado.periodo) partes.push('Melhor horário: ' + estado.periodo + '.');
+    }
+    if (estado.duvidas.length) partes.push('Dúvidas que tive na simulação: ' + estado.duvidas.join(' | '));
+    partes.push('Podemos combinar o agendamento?');
+    return partes.join('\n\n');
+  }
+  function linkWhatsApp() {
+    return 'https://wa.me/' + CONFIG.clinica.numeroWhatsApp + '?text=' + encodeURIComponent(mensagemResumo());
+  }
+
+  function cartaoTransferencia() {
+    var alvo = blocoBot();
+    var t = document.createElement('div');
+    t.className = 'transferir';
+    t.innerHTML =
+      '<div class="transf-topo">' +
+        '<div class="transf-foto">👩‍⚕️</div>' +
+        '<div><b>' + CONFIG.clinica.atendente + ' • Atendente</b><span>● online — responde em ' + CONFIG.clinica.prazoRespostaHumana + '</span></div>' +
+      '</div>' +
+      '<div class="resumo"><b>Resumo da sua simulação</b><br>' +
+        'Nome: <b>' + (estado.nome || 'não informado') + '</b><br>' +
+        (estado.escolha ? 'Exame escolhido: <b>' + estado.escolha.nome + '</b> — ' + moeda(estado.escolha.valor) + '<br>' : 'Exame escolhido: <b>ainda não selecionado</b><br>') +
+        (estado.periodo ? 'Período preferido: <b>' + estado.periodo + '</b><br>' : '') +
+        (estado.duvidas.length ? 'Dúvidas: <b>' + estado.duvidas.length + '</b><br>' : '') +
+      '</div>';
+    var btn = document.createElement('a');
+    btn.className = 'abrir-wa';
+    btn.href = linkWhatsApp();
+    btn.target = '_blank';
+    btn.rel = 'noopener';
+    btn.innerHTML = svgWhats + '<span>Abrir WhatsApp com a atendente</span>';
+    btn.onclick = function (ev) {
+      ev.preventDefault();
+      btn.href = linkWhatsApp();
+      window.open(btn.href, '_blank', 'noopener');
+      bolha('eu', 'Toquei no botão e fui para o WhatsApp real');
+      estado.etapa = 'final';
+      setTimeout(function () {
+        fala('Perfeito, {nome}! 🎉 A ' + CONFIG.clinica.atendente + ' já recebeu o seu resumo aqui do lado. É só apertar enviar na conversa que abriu. Qualquer coisa é só voltar aqui.', 800);
+      }, 400);
+    };
+    t.appendChild(btn);
+    var aviso = document.createElement('div');
+    aviso.className = 'aviso';
+    aviso.innerHTML = 'Este é um fluxo automatizado de demonstração.<br>O número real aparece só quando você toca acima.';
+    t.appendChild(aviso);
+    alvo.appendChild(t);
+    rolar();
+    return t;
+  }
+
+  /* ─────────────── FLUXO ─────────────── */
+  function fluxoBoasVindas() {
+    conversa.innerHTML = '';
+    dataSeparador('HOJE');
+    estado.etapa = 'esperando_nome';
+    campo.placeholder = 'Digite seu nome…';
+    fala(preencher(CONFIG.textos.saudacao) + ' Eu sou o assistente virtual e já te mostro os exames, os valores e o prazo de cada laudo.', 500)
+      .then(function () { return fala(CONFIG.textos.puxaConversa, 600); })
+      .then(function () { campo.focus(); });
+  }
+
+  function fluxoMenu() {
+    estado.etapa = 'menu';
+    estado.categoriaAtual = null;
+    var txt = estado.nome
+      ? 'Certo, ' + estado.nome + '! O que você procura hoje?'
+      : 'O que você procura hoje?';
+    fala(txt, 650).then(function () {
+      botoes(
+        CONFIG.categorias.map(function (c) {
+          return { rotulo: c.icone + ' ' + c.rotulo, acao: function () { fluxoCategoria(c.id); } };
+        }).concat([
+          { rotulo: '❓ Dúvidas frequentes', acao: fluxoDuvidas },
+          { rotulo: '💬 Falar com a atendente', classe: 'atendente', acao: fluxoAtendente }
+        ])
+      );
+    });
+  }
+
+  function fluxoCategoria(id) {
+    var cat = CONFIG.categorias.filter(function (c) { return c.id === id; })[0];
+    if (!cat) return;
+    estado.etapa = 'categoria';
+    estado.categoriaAtual = cat;
+    fala(cat.icone + ' ' + cat.rotulo + ' — ' + cat.resumo + '\nToque em um exame para ver o preparo e conversar sobre o agendamento.', 750)
+      .then(function () {
+        listaCartao(cat.rotulo, cat.itens.length + ' opções', cat.itens, fluxoItem);
+        botoes([
+          { rotulo: '❓ Dúvidas frequentes', acao: fluxoDuvidas },
+          { rotulo: '🏠 Outro tipo de exame', acao: fluxoMenu },
+          { rotulo: '💬 Falar com a atendente', classe: 'atendente', acao: fluxoAtendente }
+        ]);
+      });
+  }
+
+  function fluxoItem(it) {
+    estado.etapa = 'item';
+    estado.escolha = {
+      nome: it.nome, valor: it.valor,
+      categoria: estado.categoriaAtual ? estado.categoriaAtual.rotulo : '-'
+    };
+    var texto = it.nome + '\n\n💰 Valor: ' + moeda(it.valor) +
+      (it.prazo ? '\n⏱️ Resultado: ' + it.prazo : '') +
+      (it.obs ? '\n📌 ' + it.obs : '');
+    fala(texto, 900).then(function () {
+      fala('Quer seguir com esse exame?', 600).then(function () {
+        botoes([
+          { rotulo: '✅ Agendar / falar com a atendente', classe: 'atendente', acao: fluxoAtendente },
+          { rotulo: '➕ Ver outro exame', acao: function () { if (estado.categoriaAtual) fluxoCategoria(estado.categoriaAtual.id); else fluxoMenu(); } },
+          { rotulo: '💲 Comparar com pacote', acao: function () { fluxoCategoria('checkup'); } },
+          { rotulo: '🏠 Voltar ao início', classe: 'menu-casa', acao: fluxoMenu }
+        ]);
+      });
+    });
+  }
+
+  function fluxoDuvidas() {
+    estado.etapa = 'duvida';
+    var perguntas = CONFIG.duvidas.map(function (d) { return { rotulo: d.pergunta, acao: function () { respostaDuvida(d); } }; });
+    perguntas.push({ rotulo: '🏠 Voltar aos exames', classe: 'menu-casa', acao: fluxoMenu });
+    perguntas.push({ rotulo: '💬 Falar com a atendente', classe: 'atendente', acao: fluxoAtendente });
+    fala('Tenho estas dúvidas prontas aqui. Toque na que for a sua 👇', 700).then(function () {
+      botoes(perguntas);
+    });
+  }
+
+  function respostaDuvida(d) {
+    if (estado.duvidas.indexOf(d.pergunta) === -1) estado.duvidas.push(d.pergunta);
+    fala(preencher(d.resposta), 950).then(function () {
+      fala('Anotado por aqui. Tem mais alguma coisa?', 600).then(function () {
+        botoes([
+          { rotulo: '❓ Outra dúvida', acao: fluxoDuvidas },
+          { rotulo: '🩸 Ver exames e valores', acao: fluxoMenu },
+          { rotulo: '💬 Falar com a atendente', classe: 'atendente', acao: fluxoAtendente }
+        ]);
+      });
+    });
+  }
+
+  function fluxoAtendente() {
+    estado.etapa = 'atendente';
+    campo.placeholder = 'Opcional: seu horário preferido';
+    fala('Beleza, ' + (estado.nome || 'tudo bem') + '! Só um detalhe antes de te transferir:', 650)
+      .then(function () {
+        return fala(estado.escolha
+          ? 'Você já escolheu “' + estado.escolha.nome + '”. Qual período fica melhor para a coleta?'
+          : 'Qual período fica melhor para a coleta?', 700);
+      })
+      .then(function () {
+        botoes([
+          { rotulo: '🌅 Manhora (6h-12h)', acao: function () { fechamentoAtendente('manhã (6h às 12h)'); } },
+          { rotulo: '🌇 Tarde (12h-18h)', acao: function () { fechamentoAtendente('tarde (12h às 18h)'); } },
+          { rotulo: '🗓️ Sábado de manhã', acao: function () { fechamentoAtendente('sábado de manhã'); } },
+          { rotulo: '🤔 Tanto faz', acao: function () { fechamentoAtendente('tanto faz'); } }
+        ]);
+      });
+  }
+
+  function fechamentoAtendente(periodo) {
+    estado.periodo = periodo;
+    fala('Perfeito, ' + (estado.nome || '') + '. ' + (estado.escolha ? 'Vou confirmar a disponibilidade de “' + estado.escolha.nome + '” para ' + periodo + '. ' : '') + 'Um instante…', 900)
+      .then(function () { return escrever(1500); })
+      .then(function () { return fala('Pronto! O fluxo automatizado terminou aqui. 👇 Agora é a sua vez: ao tocar no botão verde abaixo, você cai direto na conversa real com a ' + CONFIG.clinica.atendente + ' no WhatsApp, já com o seu resumo preenchido.', 900); })
+      .then(function () { cartaoTransferencia(); campo.placeholder = 'Digite seu nome…'; });
+  }
+
+  /* ─────────────── ENTRADA LIVRE DO USUÁRIO ─────────────── */
+  var sinonimos = [
+    { chaves: ['atendente', 'humano', 'pessoa', 'falar com alguem', 'falar com alguém', 'whatsapp', 'marina'], acao: fluxoAtendente },
+    { chaves: ['duvida', 'dúvida', 'preparo', 'jejum', 'convenio', 'convênio', 'resultado', 'horario', 'horário', 'endereco', 'endereço', 'pagamento'], acao: fluxoDuvidas },
+    { chaves: ['sangue', 'laborator', 'hemograma', 'glicose', 'colesterol', 'exame de sangue'], acao: function () { fluxoCategoria('sangue'); } },
+    { chaves: ['imagem', 'ultra', 'ultrass', 'mamografia', 'raio', 'ressonancia', 'ressonância', 'tomografia', 'ecocardi'], acao: function () { fluxoCategoria('imagem'); } },
+    { chaves: ['check', 'pacote', 'combo', 'executivo'], acao: function () { fluxoCategoria('checkup'); } },
+    { chaves: ['domicilio', 'domicílio', 'casa', 'coleta', 'urina', 'fezes', 'gravidez'], acao: function () { fluxoCategoria('coleta'); } },
+    { chaves: ['menu', 'inicio', 'início', 'voltar', 'outra coisa'], acao: fluxoMenu },
+    { chaves: ['oi', 'ola', 'olá', 'bom dia', 'boa tarde', 'boa noite'], acao: function () { fluxoMenu(); } }
+  ];
+
+  function procuraNaTabela(txt) {
+    var min = txt.toLowerCase();
+    for (var i = 0; i < CONFIG.categorias.length; i++) {
+      var achado = CONFIG.categorias[i].itens.filter(function (it) {
+        return it.nome.toLowerCase().indexOf(min) !== -1;
+      })[0];
+      if (achado) {
+        estado.categoriaAtual = CONFIG.categorias[i];
+        fluxoItem(achado);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function nomeValido(txt) {
+    var limpo = txt.replace(/[^\p{L}\s]/gu, '').trim();
+    return limpo.length >= 2 && limpo.length <= 40 && !/^\d+$/.test(txt.trim());
+  }
+
+  function trataMensagem(txt) {
+    var limpo = txt.trim();
+    if (!limpo) return;
+    bolha('eu', limpo);
+    setTimeout(marcaLidos, 900);
+
+    if (estado.etapa === 'esperando_nome') {
+      if (nomeValido(limpo)) {
+        estado.nome = limpo.replace(/\s+/g, ' ').replace(/[^\p{L}\s'’-]/gu, '')
+          .split(' ').map(function (p) { return p.charAt(0).toUpperCase() + p.slice(1); }).join(' ');
+        estado.etapa = 'menu';
+        campo.placeholder = 'Digite sua mensagem';
+        fala('Oi, ' + estado.nome + '! Prazer da ' + CONFIG.clinica.nome + '. 😊', 700).then(fluxoMenu);
+      } else {
+        fala('Desculpa, não entendi como nome. Pode digitar só o seu primeiro nome mesmo? 🙏', 700);
+      }
+      return;
+    }
+
+    if (estado.etapa === 'atendente' && limpo.length > 1) {
+      estado.periodo = limpo;
+      fechamentoAtendente(limpo);
+      return;
+    }
+
+    var min = limpo.toLowerCase();
+    if (limpo.replace(/\s/g, '').length >= 4 && procuraNaTabela(limpo)) return;
+    for (var i = 0; i < sinonimos.length; i++) {
+      if (sinonimos[i].chaves.some(function (k) { return min.indexOf(k) !== -1; })) {
+        sinonimos[i].acao();
+        return;
+      }
+    }
+
+    fala('Ainda não sei responder isso (' + limpo + '). Posso te mostrar os exames com valores, as dúvidas frequentes, ou te passar direto para a ' + CONFIG.clinica.atendente + '. 😊', 800)
+      .then(function () {
+        botoes([
+          { rotulo: '🩸 Ver exames e valores', acao: fluxoMenu },
+          { rotulo: '❓ Dúvidas frequentes', acao: fluxoDuvidas },
+          { rotulo: '💬 Falar com a atendente', classe: 'atendente', acao: fluxoAtendente }
+        ]);
+      });
+  }
+
+  function marcaLidos() {
+    var selos = conversa.querySelectorAll('.eu .selo');
+    if (selos.length) selos[selos.length - 1].classList.add('lido');
+  }
+
+  /* ─────────────── EVENTOS ─────────────── */
+  function abre() {
+    painel.classList.add('aberto');
+    abrir.style.display = 'none';
+    dica.style.display = 'none';
+    novo.style.display = 'none';
+    if (!conversa.childNodes.length) fluxoBoasVindas();
+    setTimeout(function () { campo.focus(); }, 250);
+  }
+  function fecha() {
+    painel.classList.remove('aberto');
+    abrir.style.display = 'flex';
+    novo.style.display = 'flex';
+  }
+  abrir.onclick = abre;
+  fechar.onclick = fecha;
+  dica.onclick = abre;
+  reiniciar.onclick = function () {
+    estado.nome = null; estado.escolha = null; estado.duvidas = [];
+    estado.periodo = null; estado.categoriaAtual = null; estado.etapa = 'esperando_nome';
+    campo.placeholder = 'Digite seu nome…';
+    fluxoBoasVindas();
+  };
+  enviar.onclick = function () {
+    var v = campo.value; campo.value = '';
+    if (v.trim()) trataMensagem(v);
+  };
+  campo.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { var v = campo.value; campo.value = ''; if (v.trim()) trataMensagem(v); }
+  });
+  setTimeout(function () { if (!painel.classList.contains('aberto')) dica.style.display = 'block'; }, 2200);
+  setTimeout(function () { dica.style.display = 'none'; }, 12000);
+
+  /* Expõe o número para o resto da página (link do hero, etc.) */
+  window.__cvdConfig = CONFIG;
+  window.__cvdAbrirAtendimento = abre;
+
+  /* Modo "?so=widget": esconde a página de demonstração e abre o chat.
+     Usado quando o arquivo é chamado por iframe ou modal. */
+  /* Modo widget puro: abra com ?so=widget OU #widget (o hash sobrevive melhor
+     em file:// e em alguns servidores estáticos). Esconde a página de
+     demonstração e abre o chat direto. Usado por iframe ou modal. */
+  if ((location.search + ' ' + location.hash).toLowerCase().indexOf('widget') !== -1) {
+    Array.prototype.forEach.call(document.body.children, function (el) {
+      if (el !== raiz && el.tagName !== 'SCRIPT') el.style.display = 'none';
+    });
+    document.body.style.background = 'transparent';
+    setTimeout(abre, 120);
+  }
+})();
+</script>
+<!-- FIM DO WIDGET -->
+
+<script>
+/* Tabela do site + link do hero, alimentados pela mesma CONFIG do widget */
+(function () {
+  function monta() {
+    var cfg = window.__cvdConfig;
+    if (!cfg) { setTimeout(monta, 40); return; }
+    var corpo = document.getElementById('corpoTabela');
+    var link = document.getElementById('linkHero');
+    if (!corpo && !link) return;                    // modo ?so=widget: sem página de demonstração
+    var maisProcurados = [];
+    cfg.categorias.forEach(function (cat) {
+      cat.itens.slice(0, 4).forEach(function (it) { maisProcurados.push({ nome: it.nome, prazo: it.prazo, valor: it.valor }); });
+    });
+    maisProcurados.slice(0, 14).forEach(function (it) {
+      var tr = document.createElement('tr');
+      var t1 = document.createElement('td'); t1.textContent = it.nome;
+      var t2 = document.createElement('td'); t2.textContent = it.prazo || '—';
+      var t3 = document.createElement('td'); t3.className = 'valor';
+      t3.textContent = it.valor === 0 ? 'Grátis' : 'R$ ' + String(it.valor).replace('.', ',');
+      tr.appendChild(t1); tr.appendChild(t2); tr.appendChild(t3);
+      if (corpo) corpo.appendChild(tr);
+    });
+    if (link) {
+      var msg = 'Olá, ' + cfg.clinica.atendente + '! Vim pelo site da ' + cfg.clinica.nome + ' e quero saber sobre exames e valores.';
+      link.href = 'https://wa.me/' + cfg.clinica.numeroWhatsApp + '?text=' + encodeURIComponent(msg);
+      link.onclick = function (e) { e.preventDefault(); window.__cvdAbrirAtendimento(); };
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', monta);
+  else monta();
+})();
+</script>
+
+</body>
+</html>

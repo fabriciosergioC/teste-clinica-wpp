@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Clínica Vida Diagnósticos — Exames laboratoriais e de imagem</title>
+<meta name="description" content="Clínica de exames laboratoriais e de imagem. Fale com a atendente pelo WhatsApp.">
+
+<!--
+===============================================================================
+ PÁGINA 1/2 — SITE DA CLÍNICA (esta)
+ O simulador de atendimento mora em clinica-atendimento-whatsapp.html e abre em
+ outra página (nova aba). Nem o balão verde nem o chat ficam por cima do texto.
+
+ Para trocar o destino do botão, mexa só em PÁGINA_ATENDIMENTO logo abaixo.
+===============================================================================
+-->
+
+<style id="cvd-base">
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #12232b;
+    background: #f4f7f6;
+    line-height: 1.55;
+  }
+  img { max-width: 100%; }
+  a { color: #027a4a; }
+
+  .fa-hero {
+    background: linear-gradient(135deg, #0b5d46 0%, #12876a 55%, #17a67f 100%);
+    color: #fff;
+    padding: 72px 24px 88px;
+  }
+  .fa-container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+  .fa-hero h1 { font-size: clamp(28px, 5vw, 46px); margin: 0 0 14px; line-height: 1.15; }
+  .fa-hero p { font-size: clamp(16px, 2.4vw, 20px); max-width: 620px; margin: 0 0 26px; opacity: .94; }
+  .fa-tag {
+    display: inline-block; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.3);
+    padding: 6px 14px; border-radius: 999px; font-size: 13px; letter-spacing: .04em;
+    text-transform: uppercase; margin-bottom: 20px;
+  }
+  .fa-botoes { display: flex; gap: 12px; flex-wrap: wrap; }
+  .fa-botoes a {
+    text-decoration: none; padding: 13px 22px; border-radius: 10px; font-weight: 600; font-size: 15px;
+  }
+  .fa-botoes .primario { background: #fff; color: #0b5d46; }
+  .fa-botoes .secundario { border: 1.5px solid rgba(255,255,255,.75); color: #fff; }
+
+  .fa-bloco { padding: 56px 0; }
+  .fa-bloco h2 { font-size: clamp(22px, 3.6vw, 30px); margin: 0 0 8px; }
+  .fa-sub { color: #4a6270; margin: 0 0 30px; max-width: 640px; }
+  .fa-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+  .fa-card {
+    background: #fff; border: 1px solid #e2e9e7; border-radius: 14px; padding: 22px;
+    box-shadow: 0 1px 2px rgba(16,44,36,.05);
+  }
+  .fa-card .icone { font-size: 26px; }
+  .fa-card h3 { margin: 10px 0 6px; font-size: 17px; }
+  .fa-card p { margin: 0; font-size: 14.5px; color: #4a6270; }
+  .fa-card .preco { display: block; margin-top: 12px; font-weight: 700; color: #0b5d46; font-size: 15px; }
+
+  .fa-tabela { width: 100%; border-collapse: collapse; background: #fff; border-radius: 14px; overflow: hidden;
+               border: 1px solid #e2e9e7; font-size: 15px; }
+  .fa-tabela th, .fa-tabela td { padding: 13px 16px; text-align: left; border-bottom: 1px solid #eef3f1; }
+  .fa-tabela th { background: #0b5d46; color: #fff; font-weight: 600; font-size: 13.5px; letter-spacing: .02em; }
+  .fa-tabela tr:last-child td { border-bottom: 0; }
+  .fa-tabela td.valor { white-space: nowrap; font-weight: 700; color: #0b5d46; }
+  .fa-scroll { overflow-x: auto; }
+
+  .fa-rodape { background: #0d2b24; color: #b9ccc6; padding: 34px 0; font-size: 14px; }
+  .fa-rodape strong { color: #fff; }
+  .aviso-demo {
+    background: #fff8e6; border: 1px solid #f0dca6; color: #6b5320;
+    padding: 12px 16px; border-radius: 10px; font-size: 13.5px; margin: 0 0 26px;
+  }
+</style>
+<style id="cvd-launcher">
+  .cvd-balao {
+    position: fixed; right: 22px; bottom: 22px; z-index: 9999;
+    display: flex; align-items: center; gap: 10px;
+    background: #25D366; color: #fff; text-decoration: none;
+    padding: 15px 20px; border-radius: 999px; font-weight: 700; font-size: 15px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.28); transition: transform .18s ease;
+  }
+  .cvd-balao:hover { transform: scale(1.04); }
+  .cvd-balao svg { width: 24px; height: 24px; fill: #fff; flex: none; }
+  .cvd-balao .rotulo-curto { display: none; }
+  @media (max-width: 600px) {
+    .cvd-balao { right: 14px; bottom: 14px; padding: 14px 16px; }
+    .cvd-balao .rotulo-longo { display: none; }
+    .cvd-balao .rotulo-curto { display: inline; }
+  }
+</style>
+</head>
+<body>
+
+<header class="fa-hero">
+  <div class="fa-container">
+    <span class="fa-tag">Exames laboratoriais e de imagem</span>
+    <h1>Resultados rápidos, preço justo e coleta sem fila.</h1>
+    <p>Hemograma, ultrassonografia, check-up completo e coleta domiciliar em Belo Horizonte.
+       Valores, prazos de laudo e agendamento no atendimento.</p>
+    <div class="fa-botoes">
+      <a class="primario" href="clinica-atendimento-whatsapp.html" target="_blank" rel="noopener" id="linkHero">Falar no WhatsApp</a>
+    </div>
+  </div>
+</header>
+
+<!--
+TRECHO OCULTADO EM 2026-11-04 A PEDIDO (bloco "Serviços e valores", aviso de
+protótipo, tabela de preços e rodapé). Para trazer de volta, apague esta linha
+de abertura, a linha de fechamento logo abaixo, e o "/" no fim de cada tag.
+-->
+<!--
+<main class="fa-bloco">
+  <div class="fa-container">
+    <div class="aviso-demo">
+      <strong>Protótipo.</strong> Os preços desta tabela são valores de exemplo e precisam ser
+      conferidos antes de publicar. Edite o bloco CONFIG no fim deste arquivo.
+    </div>
+
+    <h2>Serviços e valores</h2>
+    <p class="fa-sub">O atendimento no canto da tela simula o WhatsApp da clínica: ele pergunta o
+      seu nome, mostra as categorias de exames e os valores, responde dúvidas frequentes e, no fim,
+      transfere a conversa para a atendente real.</p>
+
+    <div class="fa-scroll">
+      <table class="fa-tabela" id="servicos">
+        <thead><tr><th>Exame / serviço</th><th>Prazo do resultado</th><th>Valor</th></tr></thead>
+        <tbody id="corpoTabela"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer class="fa-rodape">
+  <div class="fa-container">
+    <strong>Clínica Vida Diagnósticos</strong> — Rua Exemplo, 245, Savassi, Belo Horizonte/MG<br>
+    Segunda a sexta 6h–18h · Sábado 6h–12h · Coleta domiciliar disponível
+  </div>
+</footer>
+-->
+
+<a class="cvd-balao" href="clinica-atendimento-whatsapp.html" target="_blank" rel="noopener" aria-label="Abrir atendimento">
+  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16.004 3.2c-7.06 0-12.8 5.74-12.8 12.8 0 2.26.59 4.46 1.71 6.4L3.2 28.8l6.57-1.72a12.7 12.7 0 0 0 6.23 1.6h.01c7.06 0 12.8-5.74 12.8-12.8s-5.74-12.68-12.8-12.68zm0 23.2h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.9 1.02 1.04-3.8-.25-.4a10.55 10.55 0 0 1-1.62-5.71c0-5.86 4.77-10.63 10.64-10.63a10.6 10.6 0 0 1 10.62 10.64c0 5.86-4.77 10.59-10.73 10.59zm5.84-7.96c-.32-.16-1.9-.94-2.2-1.04-.29-.11-.5-.16-.72.16-.21.32-.82 1.04-1.01 1.26-.19.21-.37.24-.69.08-1.94-.97-3.22-1.74-4.5-3.94-.34-.59.34-.55.97-1.82.11-.21.05-.4-.03-.56-.08-.16-.72-1.74-.99-2.38-.26-.63-.52-.54-.72-.55h-.61c-.21 0-.56.08-.85.4-.29.32-1.11 1.09-1.11 2.65s1.14 3.08 1.3 3.29c.16.21 2.25 3.44 5.45 4.83 3.2 1.39 3.2.92 3.78.86.58-.06 1.88-.77 2.14-1.51.26-.75.26-1.39.18-1.52-.08-.13-.29-.21-.61-.37z"/></svg>
+  <span class="rotulo-longo">Atendimento no WhatsApp</span><span class="rotulo-curto">Atendimento</span>
+</a>
+
+</body>
+</html>
